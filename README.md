@@ -22,8 +22,8 @@ When you connect to the database you must provide `username`, `password` `hostna
 command line programs these will be set to defaults if not provided. These are the defaults for `psql`:
 - username: whatever you're currently logged in as (i.e., your windows/mac/linux username)
 - password: you can create a default password by adding an environment variable PGPASSWORD
-- hostname: `localhost`
-- port: `5432`
+- hostname: `localhost` (or, if using a VM, its IP address)
+- port: `25432` (default is 5432 but we are exposing 25432 for these assignments)
 - database: same as your username
 
 These can be overriden in psql by adding command line switches:
@@ -44,7 +44,7 @@ Unzip and take note of the projection:
 
 This is `EPSG:4326`.
 
-### Create a `arizona` database
+### Create an `arizona` database
 Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE arizona`:
 
 ```
