@@ -54,7 +54,7 @@ docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgi
 Next, enable the `PostGIS` extension. The command is simply `CREATE EXTENSION postgis` but you pass `-d arizona` to make it happen in that new database. Submit it like:
 
 ```
-docker run --network gist604b  --rm --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -d arizona -c "CREATE EXTENSION postgis"'
+docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -d arizona -c "CREATE EXTENSION postgis"'
 ```
 
 
@@ -70,10 +70,10 @@ We are going to utilize the same postgis container, since it contains the `shp2p
 - `-v $HOME/Downloads/arizona-latest-free.shp:/data` -- this is volume sharing and may differ for you, depending where you extracted the `arizona-latest-free.shp.zip` file to.
 
 Running it through docker requires a little extra cruft to make it run. That extra docker stuff is at the beginning:
-```docker run --network gist604b --rm -v $HOME/Downloads/arizona-latest-free.shp:/data --entrypoint sh  mdillon/postgis -c '....'``` 
+```docker run --network gist604b -v $HOME/Downloads/arizona-latest-free.shp:/data --entrypoint sh  mdillon/postgis -c '....'``` 
 Then the part after -`c` inside the single quotes is the actual command that will be run inside that container, which is essentially: `shp2pgsql | psql` which extracts the shapefile into SQL and then inserts it into the database.
 ```
-docker run --network gist604b --rm -v $HOME/Downloads/arizona-latest-free.shp:/data  --entrypoint sh mdillon/postgis -c 'shp2pgsql -s 4326 -c -g geom /data/gis_osm_waterways_free_1.shp public.waterways | psql -h postgis -U postgres -d arizona'
+docker run --network gist604b -v $HOME/Downloads/arizona-latest-free.shp:/data  --entrypoint sh mdillon/postgis -c 'shp2pgsql -s 4326 -c -g geom /data/gis_osm_waterways_free_1.shp public.waterways | psql -h postgis -U postgres -d arizona'
 ```
 A successful run will result in a large number of lines with nothing else but 
 ```
