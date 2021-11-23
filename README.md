@@ -1,7 +1,7 @@
 # Assignment: PostGIS - OSM Data Load
 
 ## Background
-_[OpenStreetMap](https://www.openstreetmap.org) (aka OSM) is a map of the world, created by people like you and free to use under an open license._ In this lab you are going to download the OSM data for the state of Hawaii and load it into a
+_[OpenStreetMap](https://www.openstreetmap.org) (aka OSM) is a map of the world, created by people like you and free to use under an open license._ In this lab you are going to download the OSM data for the state of Arizona and load it into a
 PostGIS Database. 
 - Nov 2020 article noting recent heavy corporate investment in OSM [link](https://joemorrison.medium.com/openstreetmap-is-having-a-moment-dcc7eef1bb01)
 
@@ -34,9 +34,9 @@ These can be overriden in psql by adding command line switches:
 Read about the OSM Data Model at [https://labs.mapbox.com/mapping/osm-data-model/](https://labs.mapbox.com/mapping/osm-data-model/). OSM Treats the world as vectors, specifically using the terminology `nodes`, `ways`, and `relations`. It does not 
 map perfectly to the `points`, `lines`, and `polygons` models that you are used to. The model is also somewhat loosely defined and classes of entities such as roads are separated logically into different groups. Instead, they are represented by special attributes. Translating these entities to spatial layers requires a bit of work.
 
-### Download OpenStreetMap Hawaii data
+### Download OpenStreetMap Arizona data
 
-Download the Hawaii _shapefile_ (not the pbf file) for OpenStreetMap from [http://download.geofabrik.de/north-america/us/hawaii.html](http://download.geofabrik.de/north-america/us/hawaii.html). It will be named `hawaii-latest-free.shp.zip`.
+Download the Arizona _shapefile_ (not the pbf file) for OpenStreetMap from [http://download.geofabrik.de/north-america/us/arizona.html](http://download.geofabrik.de/north-america/us/arizona.html). It will be named `arizona-latest-free.shp.zip`.
 
 Unzip and take note of the projection:
 
@@ -44,17 +44,17 @@ Unzip and take note of the projection:
 
 This is `EPSG:4326`.
 
-### Create a `hawaii` database
-Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE hawaii`:
+### Create a `arizona` database
+Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE arizona`:
 
 ```
-docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c "CREATE DATABASE hawaii"'
+docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c "CREATE DATABASE arizona"'
 ```
 
-Next, enable the `PostGIS` extension. The command is simply `CREATE EXTENSION postgis` but you pass `-d hawaii` to make it happen in that new database. Submit it like:
+Next, enable the `PostGIS` extension. The command is simply `CREATE EXTENSION postgis` but you pass `-d arizona` to make it happen in that new database. Submit it like:
 
 ```
-docker run --network gist604b  --rm --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -d hawaii -c "CREATE EXTENSION postgis"'
+docker run --network gist604b  --rm --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -d arizona -c "CREATE EXTENSION postgis"'
 ```
 
 
@@ -67,13 +67,13 @@ you will provide the name of a shapefile. By default the output will be printed 
 
 We are going to utilize the same postgis container, since it contains the `shp2pgsql` program. However, when we run it, it will be a _second_ container and it will need to know how to connect to the first container. Docker allows running containers to know about each other by _linking_ them. When they are linked, the exposed parts of the container will be accessible through _environment variables_. In the command below, pay special attention to:
 - `-h postgis` -- this tells this container to run on the docker `gist604b` network alongside the `postgis` named container (remember we gave it `--name postgis` before)
-- `-v $HOME/Downloads/hawaii-latest-free.shp:/data` -- this is volume sharing and may differ for you, depending where you extracted the `hawaii-latest-free.shp.zip` file to.
+- `-v $HOME/Downloads/arizona-latest-free.shp:/data` -- this is volume sharing and may differ for you, depending where you extracted the `arizona-latest-free.shp.zip` file to.
 
 Running it through docker requires a little extra cruft to make it run. That extra docker stuff is at the beginning:
-```docker run --network gist604b --rm -v $HOME/Downloads/hawaii-latest-free.shp:/data --entrypoint sh  mdillon/postgis -c '....'``` 
+```docker run --network gist604b --rm -v $HOME/Downloads/arizona-latest-free.shp:/data --entrypoint sh  mdillon/postgis -c '....'``` 
 Then the part after -`c` inside the single quotes is the actual command that will be run inside that container, which is essentially: `shp2pgsql | psql` which extracts the shapefile into SQL and then inserts it into the database.
 ```
-docker run --network gist604b --rm -v $HOME/Downloads/hawaii-latest-free.shp:/data  --entrypoint sh mdillon/postgis -c 'shp2pgsql -s 4326 -c -g geom /data/gis_osm_waterways_free_1.shp public.waterways | psql -h postgis -U postgres -d hawaii'
+docker run --network gist604b --rm -v $HOME/Downloads/arizona-latest-free.shp:/data  --entrypoint sh mdillon/postgis -c 'shp2pgsql -s 4326 -c -g geom /data/gis_osm_waterways_free_1.shp public.waterways | psql -h postgis -U postgres -d arizona'
 ```
 A successful run will result in a large number of lines with nothing else but 
 ```
@@ -129,7 +129,7 @@ Select `localhost:25432` and click `Connect`. It is important that you click `Co
 
 ![screenshot_qgis_add_layer_connect.png](screenshot_qgis_add_layer_connect.png)
 
-Open all the OSM Hawaii layers. Take a screenshot and save it to your github `osm` branch with the name `osm_qgis_screenshot.png`
+Open all the OSM Arizona layers. Take a screenshot and save it to your github `osm` branch with the name `osm_qgis_screenshot.png`
 
 ### Deliverables:
 The following two files in a branch named `osm`, submitted as a Pull Request to be merged with master:
