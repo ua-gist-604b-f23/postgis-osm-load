@@ -114,7 +114,8 @@ represented both as points (e.g., `places`) and polygons (e.g., `places_a`).
 *Note: `natural` is a postgresql reserved word do rename `gis_osm_natural_free_1` to `nature`*
 
 ### Open PostGIS Tables as Layers in QGIS
-CIn QGIS reate a new postgis connection with:
+In QGIS reate a new postgis connection with:
+
 ![screenshot_qgis_new_postgis_connection.png](screenshot_qgis_new_postgis_connection.png)
 
 Then:
