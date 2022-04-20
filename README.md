@@ -44,8 +44,10 @@ Unzip and take note of the projection:
 
 This is `EPSG:4326`.
 
-### Create an `hawaii` database
-Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE hawaii`:
+### Create a `hawaii` database
+Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE hawaii`.
+
+We could connect to the database using a client like pgadmin and issue this command diretly through the query browser but we are going to use the docker container to do it since it exposes a couple concepts we will use later in this assignment:
 
 ```
 docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c "CREATE DATABASE hawaii"'
@@ -62,8 +64,6 @@ docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgi
 
 The command to load this data into PostGIS is called `shp2psql`. You used that in the `nyc`-based workshop tutorial before. It is a command that takes a shapefile and turns into the PostgreSQL variant of SQL. When you run it you
 you will provide the name of a shapefile. By default the output will be printed to your screen (aka `STDOUT`) but you want to redirect the output to a file. 
-
-**Note: This section can be handled using the GUI Shapefile Importer used in the NYC PostGIS Tutorial**
 
 We are going to utilize the same postgis container, since it contains the `shp2pgsql` program. However, when we run it, it will be a _second_ container and it will need to know how to connect to the first container. Docker allows running containers to know about each other by _linking_ them. When they are linked, the exposed parts of the container will be accessible through _environment variables_. In the command below, pay special attention to:
 - `-h postgis` -- this tells this container to run on the docker `gist604b` network alongside the `postgis` named container (remember we gave it `--name postgis` before)
