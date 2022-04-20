@@ -52,6 +52,12 @@ We could connect to the database using a client like pgadmin and issue this comm
 ```
 docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c "CREATE DATABASE hawaii"'
 ```
+*Note: Powershell users may et an error like `syntax error at end of input`, in which case, try to escape the double quotes with backslashes like this. Note that may also apply to additional commands following this one.
+
+```
+docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c \"CREATE DATABASE hawaii\"'
+```
+
 
 Next, enable the `PostGIS` extension. The command is simply `CREATE EXTENSION postgis` but you pass `-d hawaii` to make it happen in that new database. Submit it like:
 
