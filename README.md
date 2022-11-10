@@ -1,3 +1,4 @@
+[![Open in Codespaces](https://classroom.github.com/assets/launch-codespace-9f69c29eadd1a2efcce9672406de9a39573de1bdf5953fef360cfc2c3f7d7205.svg)](https://classroom.github.com/open-in-codespaces?assignment_repo_id=9227439)
 # Assignment: PostGIS - OSM Data Load
 
 ## Background
@@ -6,29 +7,10 @@ PostGIS Database.
 - Nov 2020 article noting recent heavy corporate investment in OSM [link](https://joemorrison.medium.com/openstreetmap-is-having-a-moment-dcc7eef1bb01)
 
 ## Deliverables
-`osm`
-- `import.cmd` (or `import.sh` for linuz/osx users) in a `osm` branch with a Pull Request to merge with master.
-- `osm_qgis_screenshot.png` - A screenshot of QGIS showing the OSM layers loaded from PostGIS, zoomed into Tucson.
+in a new branch, `osm`:
+- `import.sh` 
 
-`import.cmd` (or `import.sh` for linux/mac users) should contain all commands used to import the data into PostgreSQL. In practice, this file would be a functioning shell script that could be re-used to perform the full data import from the  unzipped shapefile to having fully populated tables in PostgreSQL.
-
-## Prerequisites
-- Docker is installed
-- `gist604b` docker network was created like `docker create network gist604b`
-- `postgis` container is running on the `gist604b` network and has a local directory mounted.
-
-## Quick Note on PostgreSQL environment
-When you connect to the database you must provide `username`, `password` `hostname`, `port`, and `database`. For 
-command line programs these will be set to defaults if not provided. These are the defaults for `psql`:
-- username: whatever you're currently logged in as (i.e., your windows/mac/linux username)
-- password: you can create a default password by adding an environment variable PGPASSWORD
-- hostname: `localhost` (or, if using a VM, its IP address)
-- port: `25432` (default is 5432 but we are exposing 25432 for these assignments)
-- database: same as your username
-
-These can be overriden in psql by adding command line switches:
-
-`psql -U $USERNAME -h $HOST -d $DATABASE`
+`import.sh` should contain all commands used to import the data into PostgreSQL. In practice, this file would be a functioning shell script that could be re-used to perform the full data import from the  unzipped shapefile to having fully populated tables in PostgreSQL.
 
 ### OpenStreetMap Data Model
 Read about the OSM Data Model at [https://labs.mapbox.com/mapping/osm-data-model/](https://labs.mapbox.com/mapping/osm-data-model/). OSM Treats the world as vectors, specifically using the terminology `nodes`, `ways`, and `relations`. It does not 
@@ -37,51 +19,61 @@ map perfectly to the `points`, `lines`, and `polygons` models that you are used 
 ### Download OpenStreetMap Hawaii data
 
 Download the Hawaii _shapefile_ (not the pbf file) for OpenStreetMap from [http://download.geofabrik.de/north-america/us/hawaii.html](http://download.geofabrik.de/north-america/us/hawaii.html). It will be named `hawaii-latest-free.shp.zip`.
+```
+mkdir -p data
+curl https://download.geofabrik.de/north-america/us/hawaii-latest-free.shp.zip -o data/hawaii.shp.zip
+unzip data/hawaii.shp.zip -d data/
+```
+You should see a lot of:
+```
+  inflating: gis_osm_water_a_free_1.shp  
+  inflating: gis_osm_water_a_free_1.shx  
+ extracting: gis_osm_waterways_free_1.cpg  
+  inflating: gis_osm_waterways_free_1.dbf  
+  inflating: gis_osm_waterways_free_1.prj  
+  inflating: gis_osm_waterways_free_1.shp  
+  inflating: gis_osm_waterways_free_1.shx  
+  ```
 
-Unzip and take note of the projection:
+In the Explorer panel, expand the `data` directory and load one of the `.prj` files in an Editor. It will contain the projection information:
 
-```GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]]```
+```
+GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137,298.257223563]],PRIMEM["Greenwich",0],UNIT["Degree",0.017453292519943295]]
+```
 
 This is `EPSG:4326`.
+
+### Start the postgresql database
+Start your database up in this codespace with the following:
+```
+mkdir -p postgres_data/data
+docker run -d -p 5432:5432 -v $HOME/postgres_data/data:/var/lib/postgresql/data mdillon/postgis
+```
+It will take a few minutes for the DB to come up. When it does (about 20 seconds), you can create your new database for the OSM data.
 
 ### Create a `hawaii` database
 Create a database for the OSM Data. You can do this through pgadmin but to make things more deterministic, type the following in a command window. Note that most of the following command is cruft required to pass the command to the server. The relevant SQL is simply `CREATE DATABASE hawaii`.
 
-We could connect to the database using a client like pgadmin and issue this command diretly through the query browser but we are going to use the docker container to do it since it exposes a couple concepts we will use later in this assignment:
-
 ```
-docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c "CREATE DATABASE hawaii"'
+psql -c "CREATE DATABASE hawaii"
 ```
-*Note: Powershell users may et an error like `syntax error at end of input`, in which case, try to escape the double quotes with backslashes like this. Note that may also apply to additional commands following this one.
-
-```
-docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -c \"CREATE DATABASE hawaii\"'
-```
-
+If you see `psql: error: connection to server at "localhost" (::1), port 5432 failed: server closed the connection unexpectedly`, wait a few seconds and try again.
 
 Next, enable the `PostGIS` extension. The command is simply `CREATE EXTENSION postgis` but you pass `-d hawaii` to make it happen in that new database. Submit it like:
 
 ```
-docker run --network gist604b --entrypoint sh mdillon/postgis -c 'psql -h postgis -U postgres -d hawaii -c "CREATE EXTENSION postgis"'
+psql -U postgres -d hawaii -c "CREATE EXTENSION postgis"
 ```
 
+### Load the OSM data into postgresql
 
-### Extract the OSM data and load it into postgresql
+The command to load the shapefile data into PostGIS is called `shp2psql`. You used that in the `nyc`-based workshop tutorial before. It is a command that takes a shapefile and turns into the PostgreSQL variant of SQL. When you run it you you will provide the name of a shapefile. By default the output will be printed to your screen (aka `STDOUT`) but you want to redirect the output to a file. 
 
-The command to load this data into PostGIS is called `shp2psql`. You used that in the `nyc`-based workshop tutorial before. It is a command that takes a shapefile and turns into the PostgreSQL variant of SQL. When you run it you
-you will provide the name of a shapefile. By default the output will be printed to your screen (aka `STDOUT`) but you want to redirect the output to a file. 
-
-We are going to utilize the same postgis container, since it contains the `shp2pgsql` program. However, when we run it, it will be a _second_ container and it will need to know how to connect to the first container. Docker allows running containers to know about each other by _linking_ them. When they are linked, the exposed parts of the container will be accessible through _environment variables_. In the command below, pay special attention to:
-- `-h postgis` -- this tells this container to run on the docker `gist604b` network alongside the `postgis` named container (remember we gave it `--name postgis` before)
-- `-v $HOME/Downloads/hawaii-latest-free.shp:/data` -- this is volume sharing and may differ for you, depending where you extracted the `hawaii-latest-free.shp.zip` file to.
-
-Running it through docker requires a little extra cruft to make it run. That extra docker stuff is at the beginning:
-```docker run --network gist604b -v $HOME/Downloads/hawaii-latest-free.shp:/data --entrypoint sh  mdillon/postgis -c '....'``` 
-Then the part after -`c` inside the single quotes is the actual command that will be run inside that container, which is essentially: `shp2pgsql | psql` which extracts the shapefile into SQL and then inserts it into the database.
 ```
-docker run --network gist604b -v $HOME/Downloads/hawaii-latest-free.shp:/data  --entrypoint sh mdillon/postgis -c 'shp2pgsql -s 4326 -c -g geom /data/gis_osm_waterways_free_1.shp public.waterways | psql -h postgis -U postgres -d hawaii'
+shp2pgsql -s 4326 -c -g geom data/gis_osm_waterways_free_1.shp public.waterways | psql -d hawaii
 ```
-A successful run will result in a large number of lines with nothing else but 
+
+A successful run will result in a large number of lines with lots of this:
 ```
 INSERT 0 1
 ```
@@ -90,59 +82,104 @@ The above two commands will create and populate a table for `waterways` based on
 - `gis_osm_waterways_free_1.shp` which is the name of the shapefile. You'll have to match each of the shapefiles that you extracted in the zip. 
 - `public.waterways` which is the target table for this data. You can name that whatevery you want but it would best to be simple but also get rid of the extra `gis_osm_` prefix and `_free_1` suffix. Note that the word `natural` is a keyword in postgres so you cannot choose that name as an output table name.
 
-You can check on the data in pgAdmin. If it looks good, do the same for the rest of the shapefiles in that directory.
 
-Repeat the steps for the additional data files. Refresh your pgadmin table list to see that the tables were created. It can take a few minutes for the larger tables but should not take longer than 15 minutes total. I encourage choosing the following renaming conventions:
+### Download
+
+You can check on the data in `PostgreSQL Explorer`. This is a new codespace so you will need to add a new database for this like you did in the PostGIS Intro assignment.
+![postgres-explorer](./media/postgres-explorer-2.png)
+- (1/7) The hostname of the database
+  - `localhost`
+- (2/7) The PostgreSQL user to authenticate as
+  - `postgres`
+- (3/7) The password of the PostgreSQL user
+  - `postgres` (will show up as `********`)
+- (4/7) The port to connect to
+  - `5432`
+- (5/7) Use an ssl connection?
+  - `Standard Connection`
+- (6/7) Which databases to connect to
+  - `hawaii`
+- (7/7) The display name of the database connection
+  - `osm-hawaii`
+  
+You should see the `waterways` table (the example below is for Arizona rather than Hawaii):
+
+![postgres-explorer](./media/postgres-explorer-3.png)
+
+To see the data in a tabular way:
 ```
-gis_osm_buildings_a_free_1.shp -> buildings_a
-gis_osm_landuse_a_free_1.shp -> landuse_a
-gis_osm_natural_a_free_1.shp -> nature_a
-gis_osm_natural_free_1.shp -> nature
-gis_osm_places_a_free_1.shp -> places_a
-gis_osm_places_free_1.shp -> places
-gis_osm_pofw_a_free_1.shp -> pofw_a
-gis_osm_pofw_free_1.shp -> pofw
-gis_osm_pois_a_free_1.shp -> pois_a
-gis_osm_pois_free_1.shp -> pois
-gis_osm_railways_free_1.shp -> railways
-gis_osm_roads_free_1.shp -> roads
-gis_osm_traffic_a_free_1.shp -> traffic_a
-gis_osm_traffic_free_1.shp -> traffic
-gis_osm_transport_a_free_1.shp -> transport_a
-gis_osm_transport_free_1.shp -> transport
-gis_osm_water_a_free_1.shp -> water_a
-gis_osm_waterways_free_1.shp -> waterways
+select * from waterways limit 1
 ```
 
-Do this for all the OSM layers. Tables containing `_a_` in them refer to polygons; hence some feature classes are 
+If it looks good, do the same for the rest of the shapefiles in that directory. The following command will loop through all the shapefiles in the `data/` directory and run the `shp2pgsql` command to convert the shapefile data to SQL and import it into postgresql. There is some extra "stuff" to help prettify the names of the tables and avoid the `natural` term, which has a special meaning in postgresql.
+
+```
+for shp in $(ls data/*.shp | grep -v waterways ); do
+  tab=$(echo $shp | sed 's/data\/gis_osm_//' |sed 's/_free_1.shp//' | sed 's/natural/nature/')
+  shp2pgsql -s 4326 -c -g geom $shp public.$tab | psql -d hawaii
+done
+```
+
+Tables containing `_a_` in them refer to polygons; hence some feature classes are 
 represented both as points (e.g., `places`) and polygons (e.g., `places_a`). 
 
-*Note: `natural` is a postgresql reserved word do rename `gis_osm_natural_free_1` to `nature`*
+### Queries
 
-### Open PostGIS Tables as Layers in QGIS
-In QGIS reate a new postgis connection with:
+Let's explore the data through SQL for a bit.
 
-![screenshot_qgis_new_postgis_connection.png](screenshot_qgis_new_postgis_connection.png)
+#### Area of Hawaiian Islands
+First, let's calculate the area of the islands by looking at the `places_a` table.
 
-Then:
-![screenshot_qgis_postgis_connection_details.png](screenshot_qgis_postgis_connection_details.png)
+```
+select distinct(fclass) from places_a
+```
+Notice item 6 is `island`. Let's look at some of those records:
+```
+select * from places_a where fclass='island';
+```
 
-Once you have the `localhost:25432` PostGIS Connection, Add all the layers:
+Let's order them from largest to smallest:
+```
+select st_area(geom), name from places_a where fclass='island' order by 1 desc;
+```
 
-Select the `Layer` -> `Add PostGIS Layers` option. 
-![screenshot_qgis_add_layer_postgis.png](screenshot_qgis_add_layer_postgis.png)
+The CRS is a lat/long coordinate system so the units are in square degrees. Hawaii takes up a lot of east-west space so both the UTM and StatePlane CRSes are split up into multiple reference systems. We don't need to be perfect so let's use the `::geography` conversion and get the area (which will be in square meters):
 
-Select `localhost:25432` and click `Connect`. It is important that you click `Connect` or else you won't see any of your tables.
+```
+select st_area(geom::geography)/1000000 as area_sq_km, name from places_a where fclass='island' order by 1 desc;
+```
 
-![screenshot_qgis_add_layer_connect.png](screenshot_qgis_add_layer_connect.png)
+See https://en.wikipedia.org/wiki/Hawaii for comparison
 
-Open all the OSM Hawaii layers. Take a screenshot and save it to your github `osm` branch with the name `osm_qgis_screenshot.png`
+- Take a screenshot of your results window and save it as `screencap-island-area.png`
+### Hawaiian Roads
+
+Let's look at the roads table.
+```
+select * from roads limit 10;
+```
+
+Get the total length of different feature classes of roads across all the islands:
+
+```
+select sum(st_length(geom::geography)) as total_len, fclass from roads group by fclass order by 1 desc;
+```
+
+Finally, get the total road length by island across all the islands (regardless of fclass):
+
+```
+select sum(st_length(r.geom::geography))/1000 as road_length_km, sum(st_area(p.geom::geography))/1000000 as island_area_sqkm, p.name
+from roads r, places_a p
+where st_intersects(p.geom, r.geom) and p.fclass='island' 
+group by p.name
+order by 1 desc;
+```
+
+- Take a screenshot of your results window and save it as `screencap-road-length.png`
+
 
 ### Deliverables:
 The following two files in a branch named `osm`, submitted as a Pull Request to be merged with master:
-1) File named `import.cmd` containing:
+1) File named `import.sh` containing:
 - all commands used to extract shapefile data into sql files (i.e. those , `shp2pgsql...`)
 - all commands used to import sql files into postgresql (i.e., `psql...`)
-2) Screenshot named `osm_qgis_screenshot.png` showing all OSM PostGIS tables visible in QGIS, zoomed into Tucson
-
-[![DOI](https://zenodo.org/badge/181833899.svg)](https://zenodo.org/badge/latestdoi/181833899)
