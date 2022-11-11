@@ -9,6 +9,8 @@ PostGIS Database.
 ## Deliverables
 in a new branch, `osm`:
 - `import.sh` 
+- `screencap-island-area.png`
+- `screencap-road-length.png`
 
 `import.sh` should contain all commands used to import the data into PostgreSQL. In practice, this file would be a functioning shell script that could be re-used to perform the full data import from the  unzipped shapefile to having fully populated tables in PostgreSQL.
 
